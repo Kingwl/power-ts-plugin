@@ -7,15 +7,17 @@
     "build:dts": "tsc",
     "build:bundle": "esno ./scripts/build.ts",
     "build": "pnpm build:bundle && pnpm build:dts",
-    "format:check": "prettier --config ../../prettier.config.json --c ./src/**/*.ts",
+    "format:check": "prettier --config ../../prettier.config.json --c ./{src,scripts}/**/*.ts",
     "format:fix": "pnpm format:check -- --write"
   },
   "author": "kingwl",
   "license": "MIT",
   "dependencies": {
-    "@power-ts-plugin/shared": "workspace:*"
+    "@power-ts-plugin/shared": "workspace:*",
+    "express": "^4.17.3"
   },
   "devDependencies": {
+    "@types/express": "^4.17.13",
     "esbuild": "^0.14.34",
     "esno": "^0.14.1",
     "prettier": "^2.6.2",

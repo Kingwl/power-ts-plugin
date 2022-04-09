@@ -7,7 +7,7 @@
     "build:dts": "tsc",
     "build:bundle": "esno ./scripts/build.ts",
     "build": "pnpm build:bundle && pnpm build:dts",
-    "format:check": "prettier --config ../../prettier.config.json --c ./src/**/*.ts",
+    "format:check": "prettier --config ../../prettier.config.json --c ./{src,scripts}/**/*.ts",
     "format:fix": "pnpm format:check -- --write"
   },
   "author": "kingwl",

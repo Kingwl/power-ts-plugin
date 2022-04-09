@@ -1,15 +1,14 @@
 {
   "name": "power-ts-plugin",
+  "private": true,
   "version": "0.0.1",
-  "description": "",
-  "main": "index.js",
+  "author": "kingwl",
+  "license": "MIT",
   "scripts": {
     "build": "pnpm run -r build",
     "build:dts": "pnpm run -r build:dts",
     "build:bundle": "pnpm run -r build:bundle",
     "format:check": "pnpm run -r format:check",
     "format:fix": "pnpm run -r format:fix"
-  },
-  "author": "kingwl",
-  "license": "MIT"
+  }
 }
