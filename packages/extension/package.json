@@ -1,0 +1,26 @@
+{
+  "name": "vscode-power-ts-plugin",
+  "version": "0.0.1",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build:dts": "tsc",
+    "build:bundle": "esno ./scripts/build.ts",
+    "build": "pnpm build:bundle && pnpm build:dts",
+    "format:check": "prettier --config ../../prettier.config.json --c ./src/**/*.ts",
+    "format:fix": "pnpm format:check -- --write"
+  },
+  "author": "kingwl",
+  "license": "MIT",
+  "dependencies": {
+    "@power-ts-plugin/shared": "workspace:*",
+    "@power-ts-plugin/plugin": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^17.0.23",
+    "@types/vscode": "^1.66.0",
+    "esbuild": "^0.14.34",
+    "esno": "^0.14.1",
+    "typescript": "^4.6.3"
+  }
+}
