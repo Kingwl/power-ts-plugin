@@ -5,10 +5,13 @@
   "author": "kingwl",
   "license": "MIT",
   "scripts": {
-    "build": "pnpm run -r build",
+    "build": "turbo run build",
     "build:dts": "pnpm run -r build:dts",
     "build:bundle": "pnpm run -r build:bundle",
     "format:check": "pnpm run -r format:check",
     "format:fix": "pnpm run -r format:fix"
+  },
+  "devDependencies": {
+    "turbo": "^1.2.1"
   }
 }
