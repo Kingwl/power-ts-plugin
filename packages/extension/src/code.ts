@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { getArgumentPosition } from './api';
+import { getArgumentPosition, getInlayHints } from './api';
+import { trim } from './utils';
 
 export type GoToParamCommandArguments = [string, number];
 export class GoToParamCommand implements vscode.Command {
@@ -32,5 +33,37 @@ export class GoToParamCommand implements vscode.Command {
 
         editor.revealRange(new vscode.Range(startPosition, endPosition));
         editor.selection = new vscode.Selection(startPosition, endPosition);
+    }
+}
+
+export class InlayHintCodeLensProvider implements vscode.CodeLensProvider {
+    constructor(private port: number) {}
+
+    async provideCodeLenses(
+        document: vscode.TextDocument,
+        token: vscode.CancellationToken
+    ) {
+        const cancelPromise = new Promise<never>((_, reject) => {
+            token.onCancellationRequested(reject);
+        });
+
+        const resp = await Promise.race([
+            getInlayHints(document, this.port),
+            cancelPromise
+        ]);
+
+        return resp.hints.map(hint => {
+            const position = document.positionAt(hint.position);
+            const line = document.lineAt(position.line);
+
+            return new vscode.CodeLens(
+                line.range,
+                new GoToParamCommand(
+                    trim(hint.text, ':'),
+                    document.fileName,
+                    hint.position
+                )
+            );
+        });
     }
 }
