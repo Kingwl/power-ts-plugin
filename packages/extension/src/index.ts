@@ -4,7 +4,7 @@ import { selectors } from './constants';
 import {
     GoToParamCommand,
     GoToParamCommandArguments,
-    InlayHintCodeLensProvider
+    InlayHintProvider
 } from './code';
 
 const defaultPort = 3264;
@@ -25,9 +25,9 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     context.subscriptions.push(
-        vscode.languages.registerCodeLensProvider(
+        vscode.languages.registerInlayHintsProvider(
             selectors,
-            new InlayHintCodeLensProvider(port)
+            new InlayHintProvider(port)
         )
     );
 }

@@ -33,9 +33,14 @@ const factory: ts.server.PluginModuleFactory = mod => {
             const app = express();
             app.use(express.json());
 
+            const oldProvideInlayHints = info.languageService.provideInlayHints;
+            const getInlayHints = oldProvideInlayHints.bind(
+                info.languageService
+            );
+
             app.post('/inlay-hints', (req, res) => {
                 const body = req.body as GetInlayHintsRequest;
-                const hints = info.languageService.provideInlayHints(
+                const hints = getInlayHints(
                     body.fileName,
                     body.span,
                     body.preference
@@ -146,6 +151,15 @@ const factory: ts.server.PluginModuleFactory = mod => {
             if (config?.port) {
                 start(config.port);
             }
+
+            info.languageService.provideInlayHints = (...args) => {
+                if (server) {
+                    return [];
+                }
+
+                return getInlayHints(...args);
+            };
+
             return info.languageService;
         },
         onConfigurationChanged(config: Partial<PluginConfiguration>) {

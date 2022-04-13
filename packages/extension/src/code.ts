@@ -36,11 +36,33 @@ export class GoToParamCommand implements vscode.Command {
     }
 }
 
-export class InlayHintCodeLensProvider implements vscode.CodeLensProvider {
+class InlayHintsWithFileName extends vscode.InlayHint {
+    /**
+     * Creates a new inlay hint.
+     *
+     * @param fileName The file name of the hint.
+     * @param position The position of the hint.
+     * @param label The label of the hint.
+     * @param kind The {@link InlayHintKind kind} of the hint.
+     */
+    constructor(
+        public fileName: string,
+        position: vscode.Position,
+        label: string | vscode.InlayHintLabelPart[],
+        kind?: vscode.InlayHintKind
+    ) {
+        super(position, label, kind);
+    }
+}
+
+export class InlayHintProvider
+    implements vscode.InlayHintsProvider<InlayHintsWithFileName>
+{
     constructor(private port: number) {}
 
-    async provideCodeLenses(
+    async provideInlayHints(
         document: vscode.TextDocument,
+        range: vscode.Range,
         token: vscode.CancellationToken
     ) {
         const cancelPromise = new Promise<never>((_, reject) => {
@@ -54,16 +76,48 @@ export class InlayHintCodeLensProvider implements vscode.CodeLensProvider {
 
         return resp.hints.map(hint => {
             const position = document.positionAt(hint.position);
-            const line = document.lineAt(position.line);
-
-            return new vscode.CodeLens(
-                line.range,
-                new GoToParamCommand(
-                    trim(hint.text, ':'),
-                    document.fileName,
-                    hint.position
-                )
+            const inlayHint = new InlayHintsWithFileName(
+                document.fileName,
+                position,
+                hint.text,
+                vscode.InlayHintKind.Parameter
             );
+            inlayHint.paddingLeft = hint.whitespaceBefore;
+            inlayHint.paddingRight = hint.whitespaceAfter;
+            return inlayHint;
         });
+    }
+
+    async resolveInlayHint(
+        hint: InlayHintsWithFileName,
+        token: vscode.CancellationToken
+    ) {
+        if (typeof hint.label !== 'string') {
+            return hint;
+        }
+
+        const part = new vscode.InlayHintLabelPart(hint.label);
+        const document = await vscode.workspace.openTextDocument(
+            vscode.Uri.file(hint.fileName)
+        );
+        const offset = document.offsetAt(hint.position);
+
+        part.command = new GoToParamCommand(
+            trim(hint.label, ':'),
+            document.fileName,
+            offset
+        );
+
+        const newHint = new InlayHintsWithFileName(
+            hint.fileName,
+            hint.position,
+            [part],
+            hint.kind
+        );
+        newHint.paddingLeft = hint.paddingLeft;
+        newHint.paddingRight = hint.paddingRight;
+        newHint.tooltip = `Go to definition`;
+
+        return newHint;
     }
 }
