@@ -152,15 +152,16 @@ const factory: ts.server.PluginModuleFactory = mod => {
                 start(config.port);
             }
 
-            info.languageService.provideInlayHints = (...args) => {
-                if (server) {
-                    return [];
+            return {
+                ...info.languageService,
+                provideInlayHints(...args) {
+                    if (server) {
+                        return [];
+                    }
+
+                    return getInlayHints(...args);
                 }
-
-                return getInlayHints(...args);
             };
-
-            return info.languageService;
         },
         onConfigurationChanged(config: Partial<PluginConfiguration>) {
             if (config.port && start) {

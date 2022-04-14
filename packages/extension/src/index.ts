@@ -19,7 +19,7 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand(
             GoToParamCommand.ID,
             async (...args: GoToParamCommandArguments) => {
-                GoToParamCommand.run(port, ...args);
+                GoToParamCommand.run(...args);
             }
         )
     );

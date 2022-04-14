@@ -1,3 +1,5 @@
+import type * as vscode from 'vscode';
+
 export function trim(str: string, charset: string) {
     const set = new Set(charset.split(''));
     let start = 0;
@@ -9,4 +11,15 @@ export function trim(str: string, charset: string) {
         end--;
     }
     return str.substring(start, end);
+}
+
+export function runWithCancelToken<T>(
+    token: vscode.CancellationToken,
+    cb: () => Promise<T>
+) {
+    const cancelPromise = new Promise<never>((_, reject) => {
+        token.onCancellationRequested(reject);
+    });
+
+    return Promise.race([cancelPromise, cb()]);
 }

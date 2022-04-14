@@ -1,35 +1,31 @@
+import { Def } from '@power-ts-plugin/shared';
 import * as vscode from 'vscode';
 import { getArgumentPosition, getInlayHints } from './api';
-import { trim } from './utils';
+import { runWithCancelToken, trim } from './utils';
 
-export type GoToParamCommandArguments = [string, number];
+export type GoToParamCommandArguments = [
+    filename: string,
+    pos: number,
+    end: number
+];
 export class GoToParamCommand implements vscode.Command {
     static ID = 'power-ts-plugin.goto-parameter';
 
     command = GoToParamCommand.ID;
     arguments: GoToParamCommandArguments;
 
-    constructor(
-        public title: string,
-        public fileName: string,
-        public position: number
-    ) {
-        this.arguments = [fileName, position];
+    constructor(public title: string, public def: Def) {
+        this.arguments = [def.fileName, def.pos, def.end];
     }
 
-    static async run(port: number, ...args: GoToParamCommandArguments) {
-        const [fileName, position] = args;
-        const data = await getArgumentPosition(fileName, position, port);
-        if (!data.def) {
-            return vscode.window.showWarningMessage('No definition found.');
-        }
-
-        const uri = vscode.Uri.file(data.def.fileName);
+    static async run(...args: GoToParamCommandArguments) {
+        const [fileName, pos, end] = args;
+        const uri = vscode.Uri.file(fileName);
         const doc = await vscode.workspace.openTextDocument(uri);
         const editor = await vscode.window.showTextDocument(doc);
 
-        const startPosition = doc.positionAt(data.def.pos);
-        const endPosition = doc.positionAt(data.def.end);
+        const startPosition = doc.positionAt(pos);
+        const endPosition = doc.positionAt(end);
 
         editor.revealRange(new vscode.Range(startPosition, endPosition));
         editor.selection = new vscode.Selection(startPosition, endPosition);
@@ -65,14 +61,9 @@ export class InlayHintProvider
         range: vscode.Range,
         token: vscode.CancellationToken
     ) {
-        const cancelPromise = new Promise<never>((_, reject) => {
-            token.onCancellationRequested(reject);
-        });
-
-        const resp = await Promise.race([
-            getInlayHints(document, this.port),
-            cancelPromise
-        ]);
+        const resp = await runWithCancelToken(token, () =>
+            getInlayHints(document, range, this.port)
+        );
 
         return resp.hints.map(hint => {
             const position = document.positionAt(hint.position);
@@ -101,12 +92,14 @@ export class InlayHintProvider
             vscode.Uri.file(hint.fileName)
         );
         const offset = document.offsetAt(hint.position);
-
-        part.command = new GoToParamCommand(
-            trim(hint.label, ':'),
-            document.fileName,
-            offset
+        const result = await runWithCancelToken(token, () =>
+            getArgumentPosition(hint.fileName, offset, this.port)
         );
+        if (!result.def) {
+            return hint;
+        }
+
+        part.command = new GoToParamCommand(trim(hint.label, ':'), result.def);
 
         const newHint = new InlayHintsWithFileName(
             hint.fileName,

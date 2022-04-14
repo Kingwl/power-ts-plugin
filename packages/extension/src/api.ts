@@ -9,13 +9,16 @@ import * as vscode from 'vscode';
 
 export async function getInlayHints(
     document: vscode.TextDocument,
+    range: vscode.Range,
     port: number
 ) {
+    const start = document.offsetAt(range.start);
+    const end = document.offsetAt(range.end);
     const req: GetInlayHintsRequest = {
         fileName: document.fileName,
         span: {
-            start: 0,
-            length: document.getText().length
+            start,
+            length: end - start
         },
         preference: {
             includeInlayParameterNameHints: vscode.workspace
