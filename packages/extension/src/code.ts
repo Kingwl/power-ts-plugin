@@ -27,7 +27,10 @@ export class GoToParamCommand implements vscode.Command {
         const startPosition = doc.positionAt(pos);
         const endPosition = doc.positionAt(end);
 
-        editor.revealRange(new vscode.Range(startPosition, endPosition));
+        editor.revealRange(
+            new vscode.Range(startPosition, endPosition),
+            vscode.TextEditorRevealType.AtTop
+        );
         editor.selection = new vscode.Selection(startPosition, endPosition);
     }
 }
