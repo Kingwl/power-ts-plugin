@@ -1,4 +1,4 @@
-import * as ts from 'typescript/lib/tsserverlibrary';
+import type * as ts from 'typescript/lib/tsserverlibrary';
 import 'open-typescript';
 
 import express from 'express';
@@ -10,8 +10,14 @@ import type {
     GetInlayHintsResponse,
     PluginConfiguration
 } from '@power-ts-plugin/shared';
+import { getDefinitionForInlayHintsArgumentPosition } from './service';
 
 const LanguageServiceModeSemantic = 0;
+
+type GetArgumentPositionWorker = (
+    req: GetArgumentPositionRequest
+) => GetArgumentPositionResponse;
+type GetInlayHintsWorker = (req: GetInlayHintsRequest) => GetInlayHintsResponse;
 
 const factory: ts.server.PluginModuleFactory = mod => {
     let server: http.Server | undefined;
@@ -38,107 +44,63 @@ const factory: ts.server.PluginModuleFactory = mod => {
                 info.languageService
             );
 
-            app.post('/inlay-hints', (req, res) => {
-                const body = req.body as GetInlayHintsRequest;
+            const getInlayHintsWorker: GetInlayHintsWorker = req => {
                 const hints = getInlayHints(
-                    body.fileName,
-                    body.span,
-                    body.preference
+                    req.fileName,
+                    req.span,
+                    req.preference
                 );
-                const result: GetInlayHintsResponse = {
+
+                return {
                     hints
                 };
-                res.send(result);
+            };
+            app.post('/inlay-hints', (req, res) => {
+                const body = req.body as GetInlayHintsRequest;
+                try {
+                    const response = getInlayHintsWorker(body);
+                    res.send(response);
+                } catch {
+                    res.status(500).send({});
+                }
             });
 
-            function getDefinitionForInlayHintsArgumentPosition(
-                fileName: string,
-                position: number
-            ) {
-                const program = info.languageService.getProgram();
-                const file = program?.getSourceFile(fileName);
-
-                if (!program || !file) {
-                    return undefined;
-                }
-
-                const realArgumentPosition = position + 1;
-                const argumentToken = ts.getTokenAtPosition(
-                    file,
-                    realArgumentPosition
-                );
-                const argumentExpression = ts.findAncestor(
-                    argumentToken,
-                    node => {
-                        return (
-                            mod.typescript.isCallExpression(node.parent) &&
-                            mod.typescript.rangeContainsRange(
-                                node.parent.arguments,
-                                node
-                            )
-                        );
+            const getArgumentPositionWorker: GetArgumentPositionWorker =
+                req => {
+                    const program = info.languageService.getProgram();
+                    if (!program) {
+                        return {};
                     }
-                );
-                if (
-                    !argumentExpression ||
-                    !mod.typescript.isExpression(argumentExpression) ||
-                    !mod.typescript.isCallExpression(argumentExpression.parent)
-                ) {
-                    return undefined;
-                }
-                const argumentPosition =
-                    argumentExpression.parent.arguments.indexOf(
-                        argumentExpression
-                    );
-                if (argumentPosition === -1) {
-                    return undefined;
-                }
 
-                const checker = program?.getTypeChecker();
-                if (!checker) {
-                    return undefined;
-                }
+                    const definitionInfo =
+                        getDefinitionForInlayHintsArgumentPosition(
+                            req.fileName,
+                            req.position,
+                            program,
+                            mod.typescript
+                        );
 
-                const signature = checker.getResolvedSignature(
-                    argumentExpression.parent
-                );
-                if (!signature) {
-                    return undefined;
-                }
-                const symbol = signature.parameters[argumentPosition];
-                if (!symbol?.valueDeclaration) {
-                    return undefined;
-                }
+                    if (!definitionInfo) {
+                        return {};
+                    }
 
-                const sourceFile = symbol.valueDeclaration.getSourceFile();
-                return {
-                    fileName: sourceFile.fileName,
-                    pos: symbol.valueDeclaration.pos,
-                    end: symbol.valueDeclaration.end
+                    return {
+                        def: {
+                            fileName: definitionInfo.fileName,
+                            pos: definitionInfo.pos,
+                            end: definitionInfo.end
+                        }
+                    };
                 };
-            }
 
             app.post('/inlay-argument-position', (req, res) => {
-                const body = req.body as GetArgumentPositionRequest;
-                const definitionInfo =
-                    getDefinitionForInlayHintsArgumentPosition(
-                        body.fileName,
-                        body.position
-                    );
-
-                if (!definitionInfo) {
-                    const result: GetArgumentPositionResponse = {};
-                    return res.send(result);
+                try {
+                    const body = req.body as GetArgumentPositionRequest;
+                    const response = getArgumentPositionWorker(body);
+                    res.send(response);
+                } catch {
+                    res.status(500).send({});
                 }
-
-                const result: GetArgumentPositionResponse = {
-                    def: {
-                        fileName: definitionInfo.fileName,
-                        pos: definitionInfo.pos,
-                        end: definitionInfo.end
-                    }
-                };
-                res.send(result);
             });
 
             start = port => {
