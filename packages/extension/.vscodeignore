@@ -1,0 +1,7 @@
+.turbo
+node_modules
+scripts
+src
+dist/**/*.map
+dist/**/*.ts
+tsconfig.json
